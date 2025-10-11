@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Ad Campaign Optimizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-color: #f0f4f8;
+            --secondary-color: #b0bec5;
+            --accent-color: #29b6f6;
+            --success-color: #69f0ae;
+            --warn-color: #ffca28;
+            --panel-bg-color: rgba(255, 255, 255, 0.1);
+            --panel-border-color: rgba(255, 255, 255, 0.2);
+            --shadow-color: rgba(31, 38, 135, 0.37);
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: var(--primary-color);
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #1d2b64, #2c3e50, #f8cdda, #a8c0ff);
+            background-size: 400% 400%;
+            animation: gradient-animation 20s ease infinite;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 1fr 2.5fr;
+            gap: 30px;
+            animation: fadeIn 1s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* --- NEW RULE ADDED HERE --- */
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .panel {
+            background: var(--panel-bg-color);
+            border-radius: 20px;
+            border: 1px solid var(--panel-border-color);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px 0 var(--shadow-color);
+            padding: 30px;
+        }
+
+        #db-status {
+            font-size: 0.9em;
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            margin-bottom: 25px;
+            color: var(--secondary-color);
+        }
+
+        h1, h2, h3, h4 {
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            margin-top: 0;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #a8c0ff, #f0f4f8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        h2 {
+            font-weight: 600;
+            border-bottom: 1px solid var(--panel-border-color);
+            padding-bottom: 15px;
+        }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .form-group { margin-bottom: 20px; }
+        .full-width { grid-column: 1 / -1; }
+        .form-group label { font-weight: 400; color: var(--secondary-color); margin-bottom: 8px; display: block; }
+        .form-group input { width: 100%; padding: 12px; box-sizing: border-box; background-color: rgba(0, 0, 0, 0.2); border: 1px solid var(--panel-border-color); border-radius: 10px; color: var(--primary-color); font-family: 'Poppins', sans-serif; font-size: 1rem; transition: all 0.3s ease; }
+        .form-group input:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 15px rgba(41, 182, 246, 0.4); }
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(0.8); }
+
+        .btn { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px 20px; border: none; border-radius: 12px; color: #fff; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; width: 100%; margin-top: 10px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .btn:hover:enabled { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+        .btn:disabled { background-color: rgba(0, 0, 0, 0.3); cursor: not-allowed; }
+        #add-ad-btn { background: linear-gradient(45deg, #0077b6, #00b4d8); }
+        
+        .solve-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
+        #solve-greedy { background: linear-gradient(45deg, #f57c00, #ffb74d); }
+        #solve-dp { background: linear-gradient(45deg, #2a9d8f, #48bfe3); }
+
+        #ads-list table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #ads-list th, #ads-list td { text-align: left; padding: 15px 10px; border-bottom: 1px solid var(--panel-border-color); }
+
+        .results-container { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
+        .result-box { background: rgba(0, 0, 0, 0.1); padding: 25px; border-radius: 15px; border: 1px solid var(--panel-border-color); }
+        .result-box h3 { margin-top: 0; font-weight: 600; }
+        #greedy-results h3 { color: var(--warn-color); }
+        #dp-results h3 { color: var(--success-color); }
+        .result-box .profit-summary { font-size: 2.8rem; font-weight: 700; margin: 10px 0 20px 0; }
+        #greedy-results .profit-summary { color: var(--warn-color); text-shadow: 0 0 15px rgba(255, 202, 40, 0.5); }
+        #dp-results .profit-summary { color: var(--success-color); text-shadow: 0 0 15px rgba(105, 240, 174, 0.5); }
+        
+        .selected-ad-list { list-style: none; padding: 0; max-height: 200px; overflow-y: auto; }
+        .selected-ad-item { background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 0.9em; }
+        .selected-ad-item strong { color: var(--primary-color); }
+        .selected-ad-item span { color: var(--secondary-color); font-size: 0.9em; }
+
+        @media (max-width: 1200px) { .container { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .results-container, .solve-buttons, .form-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="left-column">
+        <div class="panel input-form">
+            <h2>Add Ad Campaign</h2>
+            <div id="db-status">Loading Database...</div>
+            <form id="ad-form">
+                 <div class="form-group full-width">
+                    <label for="ad-name">Ad Name / Client</label>
+                    <input type="text" id="ad-name" required placeholder="e.g., BrandX Summer Sale">
+                </div>
+                 <div class="form-group full-width">
+                    <label for="ad-profit">Total Profit ($)</label>
+                    <input type="number" id="ad-profit" min="1" required placeholder="e.g., 500">
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="ad-start-date">Start Date</label>
+                        <input type="date" id="ad-start-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ad-deadline">End Date</label>
+                        <input type="date" id="ad-deadline" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="add-ad-btn" disabled>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Add to Pool</span>
+                </button>
+            </form>
+        </div>
+        <div class="panel" id="ads-list">
+            <h2>Current Ad Pool</h2>
+            <table>
+                <thead> <tr> <th>Name</th> <th>Profit</th> <th>Start</th> <th>End</th> </tr> </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="right-column">
+        <div class="panel">
+            <h1>Ad Campaign Optimizer</h1>
+            <div class="solve-buttons">
+                <button class="btn" id="solve-greedy" disabled>Greedy Solve (Heuristic)</button>
+                <button class="btn" id="solve-dp" disabled>DP Solve (Optimal)</button>
+            </div>
+            <div class="results-container">
+                <div class="result-box" id="greedy-results"></div>
+                <div class="result-box" id="dp-results"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        // --- DOM References & Constants---
+        const adForm = document.getElementById('ad-form'), adsTableBody = document.querySelector('#ads-list tbody'),
+              solveGreedyBtn = document.getElementById('solve-greedy'), solveDpBtn = document.getElementById('solve-dp'),
+              greedyResultsDiv = document.getElementById('greedy-results'), dpResultsDiv = document.getElementById('dp-results'),
+              dbStatus = document.getElementById('db-status'), allButtons = document.querySelectorAll('.btn'),
+              startDateInput = document.getElementById('ad-start-date'), deadlineInput = document.getElementById('ad-deadline');
+        const ADS_STORAGE_KEY = 'adSchedulerSqliteDB_v3';
+        let db;
+
+        // --- Utility & UI Setup ---
+        const getTodayString = () => new Date().toISOString().split('T')[0];
+        function setupDateInputs() {
+            const today = getTodayString(); startDateInput.min = today; deadlineInput.min = today;
+            startDateInput.value = today; deadlineInput.value = today;
+            startDateInput.addEventListener('change', () => {
+                deadlineInput.min = startDateInput.value;
+                if (deadlineInput.value < startDateInput.value) deadlineInput.value = startDateInput.value;
+            });
+        }
+
+        // --- Database Logic ---
+        async function initializeDatabase() {
+            try {
+                const SQL = await initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}` });
+                const dbData = localStorage.getItem(ADS_STORAGE_KEY);
+                if (dbData) { db = new SQL.Database(new Uint8Array(JSON.parse(dbData))); } 
+                else { db = new SQL.Database(); db.run("CREATE TABLE ads (name TEXT, profit INTEGER, startDate TEXT, deadline TEXT);"); persistDatabase(); }
+                dbStatus.textContent = 'Database Ready ✔️';
+                allButtons.forEach(btn => btn.disabled = false); await renderAds();
+            } catch (err) { console.error("DB init failed:", err); dbStatus.textContent = 'Error loading database.'; }
+        }
+        function persistDatabase() { try { localStorage.setItem(ADS_STORAGE_KEY, JSON.stringify(Array.from(db.export()))); } catch (err) { console.error("Failed to save DB:", err); } }
+
+        // --- Data Handling ---
+        async function addAd() {
+            const adName = document.getElementById('ad-name').value, adProfit = parseInt(document.getElementById('ad-profit').value),
+                  adStartDate = startDateInput.value, adDeadline = deadlineInput.value;
+            if (!adName || isNaN(adProfit) || !adStartDate || !adDeadline) return;
+            const stmt = db.prepare("INSERT INTO ads (name, profit, startDate, deadline) VALUES (?, ?, ?, ?);");
+            stmt.run([adName, adProfit, adStartDate, adDeadline]); stmt.free(); persistDatabase(); await renderAds();
+        }
+        async function getAds() {
+            const results = db.exec("SELECT * FROM ads;"); if (results.length === 0) return [];
+            return results[0].values.map(row => ({ name: row[0], profit: row[1], startDate: row[2], deadline: row[3] }));
+        }
+        async function renderAds() {
+            const ads = await getAds(); adsTableBody.innerHTML = '';
+            ads.forEach(ad => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${ad.name}</td><td>$${ad.profit}</td><td>${ad.startDate}</td><td>${ad.deadline}</td>`;
+                adsTableBody.appendChild(row);
+            });
+        }
+
+        // --- Event Listeners ---
+        adForm.addEventListener('submit', async (e) => { e.preventDefault(); await addAd(); adForm.reset(); setupDateInputs(); });
+        solveGreedyBtn.addEventListener('click', async () => { const ads = await getAds(); const result = solveWithGreedy(ads); displayResults(greedyResultsDiv, result, 'Greedy (Heuristic)'); });
+        solveDpBtn.addEventListener('click', async () => { const ads = await getAds(); const result = solveWithDP(ads); displayResults(dpResultsDiv, result, 'DP (Optimal)'); });
+
+        // --- Display Logic ---
+        function displayResults(container, result, title) {
+            container.innerHTML = `
+                <h3>${title}</h3>
+                <div class="profit-summary">$${result.maxProfit.toLocaleString()}</div>
+                <h4>Selected Campaigns:</h4>
+            `;
+            const list = document.createElement('ul');
+            list.className = 'selected-ad-list';
+            if (result.selectedAds.length === 0) {
+                list.innerHTML = '<li>No campaigns selected.</li>';
+            } else {
+                result.selectedAds.forEach(ad => {
+                    const item = document.createElement('li');
+                    item.className = 'selected-ad-item';
+                    item.innerHTML = `<strong>${ad.name}</strong><br><span>$${ad.profit} (${ad.startDate} to ${ad.deadline})</span>`;
+                    list.appendChild(item);
+                });
+            }
+            container.appendChild(list);
+        }
+
+        // --- ALGORITHMS ---
+        function solveWithGreedy(ads) {
+            const sortedAds = [...ads].sort((a, b) => b.profit - a.profit);
+            const selectedAds = [];
+            let maxProfit = 0;
+            const bookedDates = new Set();
+
+            for (const ad of sortedAds) {
+                let canBeScheduled = true;
+                const requiredDates = [];
+                const currentDate = new Date(ad.startDate + 'T00:00:00');
+                const endDate = new Date(ad.deadline + 'T00:00:00');
+
+                while (currentDate <= endDate) {
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    if (bookedDates.has(dateString)) {
+                        canBeScheduled = false;
+                        break;
+                    }
+                    requiredDates.push(dateString);
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+
+                if (canBeScheduled) {
+                    requiredDates.forEach(date => bookedDates.add(date));
+                    selectedAds.push(ad);
+                    maxProfit += ad.profit;
+                }
+            }
+            return { maxProfit, selectedAds };
+        }
+
+        function solveWithDP(ads) {
+            if (ads.length === 0) return { maxProfit: 0, selectedAds: [] };
+            const sortedAds = [...ads].sort((a, b) => a.deadline.localeCompare(b.deadline));
+            const n = sortedAds.length;
+            
+            const p = new Array(n).fill(-1);
+            for (let i = 1; i < n; i++) {
+                for (let j = i - 1; j >= 0; j--) {
+                    if (sortedAds[j].deadline < sortedAds[i].startDate) { p[i] = j; break; }
+                }
+            }
+            
+            const dp = new Array(n).fill(0);
+            dp[0] = sortedAds[0].profit;
+            for (let i = 1; i < n; i++) {
+                let profitIncluding_i = sortedAds[i].profit;
+                if (p[i] !== -1) { profitIncluding_i += dp[p[i]]; }
+                const profitExcluding_i = dp[i - 1];
+                dp[i] = Math.max(profitIncluding_i, profitExcluding_i);
+            }
+            const maxProfit = dp[n - 1];
+
+            const selectedAds = [];
+            let i = n - 1;
+            while (i >= 0) {
+                let profitIncluding_i = sortedAds[i].profit;
+                if (p[i] !== -1) { profitIncluding_i += dp[p[i]]; }
+                const profitExcluding_i = (i > 0) ? dp[i - 1] : 0;
+                if (profitIncluding_i > profitExcluding_i) {
+                    selectedAds.push(sortedAds[i]); i = p[i];
+                } else { i--; }
+            }
+            return { maxProfit, selectedAds: selectedAds.reverse() };
+        }
+
+        // --- Initialize the Application ---
+        setupDateInputs();
+        initializeDatabase();
+    });
+</script>
+
+</body>
+</html>
