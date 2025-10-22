@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ad Scheduling - Hybrid Algorithm</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>📺 Ad Scheduling (Hybrid + Category Constraint)</h1>
+
+      <div class="input-section">
+        <h2>Add Advertisement</h2>
+        <form id="adForm">
+          <input type="text" id="adName" placeholder="Ad Name" required />
+
+          <select id="adCategory" required>
+            <option value="" disabled selected>Select Category</option>
+            <option value="Automotive">Automotive</option>
+            <option value="Beauty & Personal Care">Beauty & Personal Care</option>
+            <option value="Education">Education</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Fashion & Apparel">Fashion & Apparel</option>
+            <option value="Finance">Finance</option>
+            <option value="Food & Beverage">Food & Beverage</option>
+            <option value="Gaming">Gaming</option>
+            <option value="Health & Wellness">Health & Wellness</option>
+            <option value="Home & Garden">Home & Garden</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Jewelry">Jewelry</option>
+            <option value="Pharmaceutical">Pharmaceutical</option>
+            <option value="Real Estate">Real Estate</option>
+            <option value="Retail">Retail</option>
+            <option value="Sports & Fitness">Sports & Fitness</option>
+            <option value="Technology">Technology</option>
+            <option value="Telecommunications">Telecommunications</option>
+            <option value="Travel & Hospitality">Travel & Hospitality</option>
+            <option value="Other">Other</option>
+          </select>
+          
+          <input
+            type="number"
+            id="adDuration"
+            placeholder="Duration"
+            min="1"
+            required
+          />
+          <input
+            type="number"
+            id="adProfit"
+            placeholder="Profit"
+            min="1"
+            required
+          />
+          <input
+            type="number"
+            id="adDeadline"
+            placeholder="Deadline (day)"
+            min="1"
+            required
+          />
+          
+          <div class="button-group">
+            <button type="submit" id="submitAdBtn">➕ Add Ad</button>
+            <button type="button" id="cancelEditBtn" class="cancel-btn hidden">
+              ✖️ Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <h2>Scheduling Parameters</h2>
+      <div class="param-section">
+        <label>Total Days:</label>
+        <input type="number" id="totalDays" value="5" min="1" />
+        <label>Slots per Day:</label>
+        <input type="number" id="slotsPerDay" value="2" min="1" />
+        <button id="runScheduler">▶️ Run Scheduler</button>
+      </div>
+
+      <div class="ad-list-section">
+        <div class="ad-list-header">
+          <h2>Added Ads</h2>
+          <button id="clearAdsButton" class="clear-btn">❌ Clear All</button>
+        </div>
+
+        <table id="adTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Duration</th>
+              <th>Profit</th>
+              <th>Deadline</th>
+              <th>Actions</th> </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="output-section">
+        <h2>📅 Schedule Result</h2>
+        <div id="scheduleOutput"></div>
+        <div id="profitOutput"></div>
+        <div id="summaryOutput"></div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Hybrid: Fractional Knapsack + Job Scheduling</title>
+<style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial; padding:18px; background:#0f172a; color:#e6eef8;}
+    .card{background:rgba(255,255,255,0.03); padding:16px; border-radius:10px; margin-bottom:12px; border:1px solid rgba(255,255,255,0.04)}
+    label{display:block;font-size:0.9rem;margin-bottom:6px;color:#9fb1d9}
+    input,select{width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#e6eef8}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    button{padding:10px 14px;border-radius:8px;border:0;background:#2563eb;color:white;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{padding:8px;border-bottom:1px dashed rgba(255,255,255,0.04);font-size:0.9rem}
+    .small{font-size:0.85rem;color:#9fb1d9}
+    pre{background:rgba(255,255,255,0.02);padding:10px;border-radius:6px;overflow:auto}
+</style>
+</head>
+<body>
+
+<h1>Hybrid Scheduler — Fractional Knapsack + Job Scheduling</h1>
+<div class="card">
+  <h3>Add Ad</h3>
+  <div class="row">
+    <div>
+      <label>Ad Name</label>
+      <input id="ad-name" placeholder="Campaign A">
+    </div>
+    <div>
+      <label>Category</label>
+      <input id="ad-category" placeholder="Brand/Tech/Seasonal">
+    </div>
+  </div>
+  <div class="row" style="margin-top:10px;">
+    <div>
+      <label>Profit (numeric)</label>
+      <input id="ad-profit" type="number" min="0" placeholder="e.g., 500">
+    </div>
+    <div>
+      <label>Duration (slots) — integer</label>
+      <input id="ad-duration" type="number" min="1" placeholder="e.g., 2">
+    </div>
+  </div>
+  <div style="margin-top:10px;">
+    <label>Last Deadline (inclusive)</label>
+    <input id="ad-deadline" type="date">
+  </div>
+  <div style="margin-top:10px;">
+    <button id="add-ad">Add Ad to Pool</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Settings</h3>
+  <div class="row">
+    <div>
+      <label>Slots per day (capacity)</label>
+      <input id="slots-per-day" type="number" min="1" value="3">
+    </div>
+    <div>
+      <label>Timeline start (optional)</label>
+      <input id="timeline-start" type="date">
+    </div>
+  </div>
+  <div style="margin-top:10px;">
+    <button id="run-hybrid">Run Hybrid Scheduler</button>
+    <button id="clear-pool" style="margin-left:8px;background:#ef4444">Clear Pool</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Ad Pool</h3>
+  <table id="pool-table">
+    <thead><tr><th>Name</th><th>Profit</th><th>Duration</th><th>Category</th><th>Deadline</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="card" id="results-card" style="display:none;">
+  <h3>Schedule Results</h3>
+  <div class="small" id="summary-line"></div>
+  <table id="schedule-table">
+    <thead><tr><th>Ad</th><th>Allocated Slots (day:slots...)</th><th>Allocated (total slots)</th><th>Profit Earned</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h4 style="margin-top:12px">Timeline (daily capacity usage)</h4>
+  <pre id="timeline-pre" style="height:160px"></pre>
+</div>
+
+<script>
+// -------------------------------
+// Utility date helpers
+// -------------------------------
+function toISODate(d){ // d: Date -> "YYYY-MM-DD"
+    const y=d.getFullYear(), m=(d.getMonth()+1).toString().padStart(2,'0'), day=d.getDate().toString().padStart(2,'0');
+    return `${y}-${m}-${day}`;
+}
+function parseDate(s){ // "YYYY-MM-DD" -> Date (local midnight)
+    if(!s) return null;
+    const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d);
+}
+function addDays(d,n){ const nd=new Date(d); nd.setDate(nd.getDate()+n); return nd; }
+
+// -------------------------------
+// In-memory pool
+// -------------------------------
+const pool = []; // each: {name, profit, category, duration, deadline: "YYYY-MM-DD", density}
+const poolTableBody = document.querySelector('#pool-table tbody');
+
+function renderPool(){
+    poolTableBody.innerHTML = '';
+    pool.forEach(ad => {
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${ad.name}</td><td>$${ad.profit}</td><td>${ad.duration}</td><td>${ad.category||''}</td><td>${ad.deadline}</td>`;
+        poolTableBody.appendChild(tr);
+    });
+}
+
+// -------------------------------
+// Add ad
+// -------------------------------
+document.getElementById('add-ad').addEventListener('click', () => {
+    const name = document.getElementById('ad-name').value.trim();
+    const category = document.getElementById('ad-category').value.trim();
+    const profit = Number(document.getElementById('ad-profit').value);
+    const duration = parseInt(document.getElementById('ad-duration').value,10);
+    const deadline = document.getElementById('ad-deadline').value;
+    if(!name || isNaN(profit) || profit <= 0 || !duration || !deadline){ alert('Please fill all fields with valid values.'); return; }
+    const ad = { name, category, profit, duration, deadline };
+    ad.density = ad.profit / ad.duration; // profit per slot
+    pool.push(ad);
+    renderPool();
+    // clear inputs (optional)
+    document.getElementById('ad-name').value=''; document.getElementById('ad-profit').value=''; document.getElementById('ad-duration').value=''; document.getElementById('ad-deadline').value='';
+});
+
+// -------------------------------
+// Clear pool
+// -------------------------------
+document.getElementById('clear-pool').addEventListener('click', () => {
+    if(!confirm('Clear all ads in pool?')) return;
+    pool.length = 0; renderPool();
+    document.getElementById('results-card').style.display='none';
+});
+
+// -------------------------------
+// Hybrid Scheduler implementation
+// -------------------------------
+document.getElementById('run-hybrid').addEventListener('click', () => {
+    if(pool.length === 0){ alert('Pool is empty. Add ads first.'); return; }
+    // get settings
+    const slotsPerDay = parseFloat(document.getElementById('slots-per-day').value) || 1;
+    // timeline start
+    let timelineStart = document.getElementById('timeline-start').value;
+    if(!timelineStart){
+        timelineStart = toISODate(new Date()); // today
+        document.getElementById('timeline-start').value = timelineStart;
+    }
+    // determine timeline end = max deadline among ads
+    const maxDeadline = pool.reduce((acc,ad) => acc>ad.deadline?acc:ad.deadline, pool[0].deadline);
+    // build days array from timelineStart to maxDeadline inclusive
+    const startDate = parseDate(timelineStart);
+    const endDate = parseDate(maxDeadline);
+    if(startDate > endDate){ alert('Timeline start is after max deadline. Adjust timeline start or ad deadlines.'); return; }
+
+    const days = [];
+    for(let d = new Date(startDate); d <= endDate; d = addDays(d,1)){
+        days.push({ date: toISODate(d), capacity: slotsPerDay, used: 0, allocations: [] }); // capacity = remaining slots (we'll mutate)
+    }
+    const dateToIndex = {}; days.forEach((dd,i)=>dateToIndex[dd.date]=i);
+
+    // sort ads by density (profit per slot) descending — fractional knapsack logic
+    const adsByDensity = [...pool].sort((a,b) => b.density - a.density);
+
+    // For each ad, try to allocate up to ad.duration slots across days latest-first before its deadline.
+    // If not enough capacity, allocate fractionally (partial slot counts).
+    const scheduleResults = []; // {ad, allocations:[{date,slotsAllocated}], totalAllocatedSlots, profitEarned}
+
+    for(const ad of adsByDensity){
+        // allowed days indices: from timelineStart index (0) to min(deadlineIndex, days.length-1)
+        const deadlineIndex = dateToIndex[ad.deadline];
+        if(deadlineIndex === undefined){
+            // ad deadline outside timeline (before start or after end?) -> skip (shouldn't occur)
+            scheduleResults.push({ ad, allocations: [], totalAllocated: 0, profitEarned: 0 });
+            continue;
+        }
+        let need = ad.duration; // slots needed (can be fractional if we choose)
+        const allocations = [];
+        // iterate days backwards from deadlineIndex to 0
+        for(let di = deadlineIndex; di >= 0 && need > 0; di--){
+            const day = days[di];
+            const available = day.capacity - day.used;
+            if(available <= 0) continue;
+            // allocate min(available, need)
+            const take = Math.min(available, need);
+            day.used += take;
+            need -= take;
+            allocations.push({ date: day.date, slots: take });
+            day.allocations.push({ adName: ad.name, slots: take });
+        }
+        // after iterating we might have need > 0: that means we couldn't fulfill full duration
+        const allocated = ad.duration - need; // can be fractional
+        const profitEarned = ad.profit * (allocated / ad.duration);
+        scheduleResults.push({ ad, allocations, totalAllocated: allocated, profitEarned });
+    }
+
+    // Summary totals
+    const totalProfit = scheduleResults.reduce((s,r)=>s + r.profitEarned, 0);
+    const totalAllocatedSlots = scheduleResults.reduce((s,r)=>s + r.totalAllocated,0);
+
+    // Render results
+    document.getElementById('results-card').style.display='block';
+    document.getElementById('summary-line').textContent = `Total profit earned: $${totalProfit.toFixed(2)} • Total allocated slots: ${totalAllocatedSlots.toFixed(2)} • Timeline days: ${days.length}`;
+    const tbody = document.querySelector('#schedule-table tbody');
+    tbody.innerHTML = '';
+    scheduleResults.forEach(res => {
+        const tr = document.createElement('tr');
+        const allocStr = res.allocations.map(a=>`${a.date}:${a.slots}`).join(', ') || '—';
+        tr.innerHTML = `<td>${res.ad.name}</td><td>${allocStr}</td><td>${res.totalAllocated.toFixed(2)}</td><td>$${res.profitEarned.toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+    });
+
+    // timeline text: daily capacity usage and remaining
+    const timelineLines = days.map(d => `${d.date} • used: ${d.used.toFixed(2)} / ${d.capacity}  • allocations: ${d.allocations.map(a=>`${a.adName}(${a.slots})`).join(', ') || 'none'}`);
+    document.getElementById('timeline-pre').textContent = timelineLines.join('\n');
+});
+
+// -------------------------------
+// Init small demo (optional)
+// -------------------------------
+(function seedDemo(){
+    const today = new Date();
+    const t = toISODate(today);
+    document.getElementById('timeline-start').value = t;
+    // small seed
+    // pool.push({name:'A', category:'Brand', profit:200, duration:2, deadline:toISODate(addDays(today,2)), density:200/2});
+    // pool.push({name:'B', category:'Tech', profit:150, duration:1, deadline:toISODate(addDays(today,0)), density:150/1});
+    // pool.push({name:'C', category:'Promo', profit:180, duration:3, deadline:toISODate(addDays(today,4)), density:180/3});
+    // renderPool();
+})();
+</script>
+</body>
+</html>
