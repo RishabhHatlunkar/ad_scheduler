@@ -1,70 +1,61 @@
-# Advanced Ad Campaign Optimizer
+# Advanced Slot-Based Ad Scheduler
 
-An advanced, visually appealing web application for optimizing advertisement schedules to maximize profit. This tool allows users to manage a pool of ad campaigns, including multi-day campaigns, and compare the results of a fast Greedy heuristic against a mathematically optimal Dynamic Programming solution.
+A visually appealing, single-page web application for scheduling advertisements to maximize profit based on complex, real-world constraints. This tool allows users to add, edit, and delete ads, which are saved persistently in the browser.
 
-
+The scheduler implements an advanced greedy algorithm to fill time slots, ensuring that no ad is run consecutively with an ad of the same **name** or **category**.
 
 ---
+
 ## ✨ Features
 
-* **Stunning UI/UX**: A modern, responsive interface featuring a mesmerizing animated gradient background and glassmorphic panels.
-* **Multi-Day Campaigns**: Add ad campaigns with specific start and end dates, allowing for complex, real-world scheduling scenarios.
-* **Persistent Local Database**: All ad campaigns are saved in your browser's local storage using SQLite (via `sql.js`), so your data is safe between sessions.
-* **Dual-Algorithm Solver**:
-    * **Greedy (Heuristic) Solver**: Implements a "Highest Profit First" strategy for a quick, approximate solution.
-    * **DP (Optimal) Solver**: Implements the **Weighted Interval Scheduling** algorithm using Dynamic Programming to find the guaranteed, mathematically optimal schedule for maximum profit.
-* **Clear Side-by-Side Comparison**: Instantly view and compare the results (total profit and selected campaigns) from both algorithms.
+* **Stunning UI/UX**: A modern, responsive interface featuring a mesmerizing animated gradient background and "glassmorphic" panels.
+* **Ad Management (CRUD)**: Full **Create, Read, Update, and Delete** functionality for your ad list.
+* **Persistent Browser Storage**: All ads are saved in your browser's **`localStorage`**, so your data is safe between sessions.
+* **Advanced Greedy Solver**: Implements a slot-by-slot greedy algorithm that sorts all ad "parts" by profit density to maximize returns.
+* **Complex Constraints**: The scheduler intelligently enforces two key rules:
+    1.  An ad cannot be placed in a slot if the *previous* slot ran an ad with the same **name**.
+    2.  An ad cannot be placed in a slot if the *previous* slot ran an ad from the same **category**.
+* **Detailed Reporting**:
+    * View a clean, slot-by-slot breakdown of the schedule for each day.
+    * See a final **"Ad Performance Summary"** table showing how many slots each ad won and the total profit it generated.
 
 ---
+
 ## 🚀 Technologies Used
 
 * **Frontend**: HTML5, CSS3, JavaScript (ES6+)
-* **Database**: SQLite compiled to WebAssembly via **`sql.js`** for in-browser database management.
-* **Styling**: Modern CSS features including CSS Variables, Flexbox, Grid, and `backdrop-filter` for the glassmorphism effect.
-* **Fonts**: **Google Fonts** (`Poppins`) for clean and elegant typography.
-* **Algorithms**:
-    * Greedy Heuristic ("Highest Profit First")
-    * Dynamic Programming (Weighted Interval Scheduling)
+* **Storage**: Browser **`localStorage`** API for data persistence.
+* **Styling**: Modern CSS features including CSS Variables, Flexbox, Grid, Animations, and `backdrop-filter` for the glassmorphism effect.
+* **Algorithm**: Slot-Based Greedy (Profit Density) with Consecutive Constraint Checking.
 
 ---
+
 ## 💻 How to Run Locally
 
-This is a pure front-end application and requires no special build steps or server.
+This is a pure front-end application and requires **no server, build steps, or dependencies**.
 
-1.  **Clone the Repository (or Download the Files)**
-    If you have this project in a Git repository, clone it:
-    ```sh
-    git clone <your-repo-url>
-    ```
-    Alternatively, just save the `index.html` file to your local machine.
+1.  **Save the Files**
+    * `index.html`
+    * `style.css`
+    * `script.js`
 
 2.  **Open the `index.html` File**
-    Simply drag the `index.html` file into your web browser (like Chrome, Firefox, or Edge) or right-click and choose "Open with..." your preferred browser.
+    * Simply drag the `index.html` file into your web browser (like Chrome, Firefox, or Edge) or right-click and choose "Open with..." your preferred browser.
 
-    > **Note:** Because the application uses `sql.js` which loads a `.wasm` file, running it directly from the local filesystem (`file:///...`) might cause security restrictions in some browsers. For the best experience, it's recommended to serve the file with a simple local server.
-
-3.  **(Optional) Use a Local Server for Best Performance**
-    If you have Node.js installed, you can use the `serve` package for a quick local server.
-    ```sh
-    # Install serve globally (if you haven't already)
-    npm install -g serve
-
-    # Navigate to the project directory and start the server
-    serve .
-    ```
-    Then, open your browser and go to the URL provided (usually `http://localhost:3000`).
+That's it! The application will run locally and save all your ad data in your browser's storage.
 
 ---
-## 🧠 Understanding the Algorithms
 
-This project is a practical demonstration of two fundamental computer science concepts for solving optimization problems.
+## 🧠 Understanding the Algorithm
 
-### Greedy Heuristic
-* **Strategy**: "Job Sequencing (Highest Profit First)".
-* **Behavior**: It sorts all campaigns by profit and immediately schedules the most profitable one if it fits. It's fast and simple but **not guaranteed to be optimal**, as it might make a "short-sighted" choice that blocks a better combination of ads.
+This project uses a custom, slot-based greedy algorithm to solve this complex scheduling problem.
 
-### Dynamic Programming (DP)
-* **Strategy**: Weighted Interval Scheduling.
-* **Behavior**: This is the **optimal** approach. It sorts campaigns by their end date and systematically calculates the maximum possible profit at each point in time, considering all valid combinations. It is more complex but guarantees the best possible result.
-
-By comparing both, this tool effectively illustrates the trade-off between speed/simplicity (Greedy) and guaranteed optimality (DP).
+* **Strategy**: "Highest Profit-Density-Per-Slot First"
+* **Behavior**:
+    1.  **Deconstruction**: The scheduler first breaks all ads down into their individual ad "parts" (e.g., a 3-duration ad becomes three 1-slot parts). Each part is assigned a "profit-per-slot" value (profit/duration).
+    2.  **Sorting**: It creates one large list of *all* ad parts from *all* ads and sorts it by profit-per-slot, from highest to lowest.
+    3.  **Placement**: It iterates through the schedule one slot at a time (Day 1 Slot 1, Day 1 Slot 2, etc.) and tries to place the most profitable ad part available from its sorted list that also satisfies the deadline.
+    4.  **Constraint Checking**: Before placing an ad part, it checks the **immediately preceding slot**:
+        * If the previous slot has the same **ad name**, it's **blocked**.
+        * If the previous slot has the same **ad category**, it's **blocked**.
+    5.  **Iteration**: If the most profitable ad is blocked, it tries the *next* most profitable ad for that same slot, and so on, until it finds one that is valid. If no valid ads are left, the slot correctly remains empty.
